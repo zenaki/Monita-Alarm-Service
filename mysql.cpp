@@ -53,35 +53,78 @@ void mysql::close(QSqlDatabase db)
     db.removeDatabase(connection);
 }
 
-void mysql::read_data_alarm(QSqlDatabase db, QString type, int debug)
+QStringList mysql::read_titik_ukur(QSqlDatabase db, int id_user, QString type, int debug)
 {
-//    QString query;
-//    QSqlQuery q(QSqlDatabase::database(db.connectionName()));
-
-//    query = "REPLACE INTO " + tb_name + " ( \
-//                alarm_id, \
-//                titik_ukur_id, \
-//                event_time, \
-//                desc \
-//            ) VALUES ";
-//    query = query + data + ";";
-////    log.write(type, query, debug);
-//    q.prepare(query);
-//    q.exec();
+    QStringList result;
+    if (db.isValid()) {
+        if (!db.isOpen()) {
+            db.open();
+        }
+        QString query;
+        QSqlQuery q(QSqlDatabase::database(db.connectionName()));
+        query = "call get_titik_ukur("+QString::number(id_user)+")";
+//        log.write(type, query, debug);
+//        q.prepare(query);
+        if (q.exec(query)) {
+            while(q.next()) {
+                result.append(q.value(0).toString());
+                result.append(q.value(1).toString());
+            }
+        }
+        db.close();
+    }
+    return result;
 }
 
-void mysql::write_alarm_history(QSqlDatabase db, QString tb_name, QString data, QString type, int debug){
-    QString query;
-    QSqlQuery q(QSqlDatabase::database(db.connectionName()));
+QStringList mysql::read_data_alarm(QSqlDatabase db, QString type, int debug)
+{
+    QStringList result;
+    if (db.isValid()) {
+        if (!db.isOpen()) {
+            db.open();
+        }
+        QString query;
+        QSqlQuery q(QSqlDatabase::database(db.connectionName()));
+        query = "call get_alarm_rules()";
+//        log.write(type, query, debug);
+//        q.prepare(query);
+        if (q.exec(query)) {
+            while(q.next()) {
+                result.append(q.value(0).toString());
+                result.append(q.value(1).toString());
+                result.append(q.value(2).toString());
+                result.append(q.value(3).toString());
+                result.append(q.value(4).toString());
+                result.append(q.value(5).toString());
+                result.append(q.value(6).toString());
+                result.append(q.value(7).toString());
+                result.append(q.value(8).toString());
+            }
+        }
+        db.close();
+    }
+    return result;
+}
 
-    query = "REPLACE INTO " + tb_name + " ( \
-                alarm_id, \
-                titik_ukur_id, \
-                event_time, \
-                desc \
-            ) VALUES ";
-    query = query + data + ";";
-//    log.write(type, query, debug);
-    q.prepare(query);
-    q.exec();
+void mysql::write_alarm_history(QSqlDatabase db, QString data, QString type, int debug)
+{
+    if (db.isValid()) {
+        if (!db.isOpen()) {
+            db.open();
+        }
+
+        QString query;
+        QSqlQuery q(QSqlDatabase::database(db.connectionName()));
+
+        query = "call set_history_alarm(\'"+data+"\');";
+
+//        log.write(type, query, debug);
+//        q.prepare(query);
+//        qDebug() << query;
+        if (q.exec(query)) {
+//            qDebug() << "Berhasi";
+        }
+
+        db.close();
+    }
 }

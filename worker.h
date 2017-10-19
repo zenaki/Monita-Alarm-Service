@@ -15,6 +15,7 @@ public:
     explicit worker(QObject *parent = 0);
 
     struct data_alarm dAlarm[MAX_DATA];
+    int jml_data_alarm;
 
 private:
     redis rds;
@@ -23,6 +24,7 @@ private:
     notification *notf;
     QThread threadNotf;
     mysql db_mysql;
+    QSqlDatabase db;
 
     void readCurrentValue();
 

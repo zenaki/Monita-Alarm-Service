@@ -17,6 +17,8 @@ notification::notification(worker *parent) : QObject(parent)
             m_pWebSocketServer->close();
         }
     }
+
+    db = db_mysql.connect_db("notification");
 }
 
 notification::~notification()
@@ -53,19 +55,19 @@ void notification::doSetup(QThread &cThread)
 
 void notification::doWork()
 {
-    QDateTime dt = QDateTime::currentDateTime();
-    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
-//    log.write("Redis",request.at(0) + " Data ..",
-//              monita_cfg.config.at(7).toInt());
-    int redis_len = request.at(0).toInt();
-    if (redis_len > 0) {
-        request = rds.reqRedis("hgetall monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
+//    QDateTime dt = QDateTime::currentDateTime();
+//    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
+////    log.write("Redis",request.at(0) + " Data ..",
+////              monita_cfg.config.at(7).toInt());
+//    int redis_len = request.at(0).toInt();
+//    if (redis_len > 0) {
+//        request = rds.reqRedis("hgetall monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
 
-        for (int i = 0; i < m_clients.length(); i++) {
-            this->RedisToJson(request, dt, i);
-        }
-//        request = rds.reqRedis("del monita_service:vismon", address, port, redis_len*2);
-    }
+//        for (int i = 0; i < m_clients.length(); i++) {
+//            this->RedisToJson(request, dt, i);
+//        }
+////        request = rds.reqRedis("del monita_service:vismon", address, port, redis_len*2);
+//    }
 }
 
 void notification::RedisToJson(QStringList data, QDateTime dt, int index)
@@ -74,22 +76,19 @@ void notification::RedisToJson(QStringList data, QDateTime dt, int index)
     QJsonObject AlaMonObject;
     QJsonArray AlaMonArray;
 
-    QString temp;
-    QStringList list_temp2;
-
-    for (int i = 0; i < data.length(); i+=2) {
-        temp = data.at(i);
-        list_temp2 = data.at(i+1).split(";");
-
-        if (list_temp2.at(1) != "NORMAL") {
-            json["titik_ukur"] = temp;
-            json["current_value"] = list_temp2.at(0);
-
-            temp = list_temp2.at(1);
-            json["status"] = temp.replace("_", " ");
-            temp = list_temp2.at(2);
-            json["time"] = temp.replace("_", " ");
-            AlaMonArray.append(json);
+    for (int i = 0; i < data.length(); i+=5) {
+        for (int j = 0; j < m_titik_ukur[index].length(); j++) {
+            if (data.at(i+1) == m_titik_ukur[index][j]) {
+                if (data.at(i+4) != "NORMAL") {
+                    json["alarm_id"] = data.at(i);
+                    json["nama_titik"] = m_nama_titik_ukur[index][j];
+                    json["titik_ukur"] = data.at(i+1);
+                    json["time"] = data.at(i+2);
+                    json["current_value"] = data.at(i+3);
+                    json["status"] = data.at(i+4);
+                    AlaMonArray.append(json);
+                }
+            }
         }
     }
     AlaMonObject["monita_alarm"] = AlaMonArray;
@@ -133,14 +132,39 @@ void notification::onNewConnection()
 //              monita_cfg.config.at(7).toInt());
 //    pSocket->sendTextMessage("Berhasil Connect cuy ..");
     m_clients << pSocket;
+
+    QStringList temp_nama, temp_titik_ukur;
+    m_nama_titik_ukur << temp_nama;
+    m_titik_ukur << temp_titik_ukur;
 }
 
 void notification::processTextMessage(QString message)
 {
-//    QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
+    QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
 //    log.write("WebSocket","Client : " + pClient->localAddress().toString() + " Message received : " + message,
 //              monita_cfg.config.at(7).toInt());
 //    if (pClient) {pClient->sendTextMessage(message);}
+    if (!message.isEmpty()) {
+        QStringList data = message.split(":");
+        if (data.at(0) == "id") {
+            for (int i = 0; i < m_clients.length(); i++) {
+                if (m_clients.at(i) == pClient) {
+//                    QStringList temp_nama, temp_titik_ukur;
+//                    temp_nama = m_nama_titik_ukur.at(i);
+//                    temp_titik_ukur = m_titik_ukur.at(i);
+
+                    QStringList dataAlarm = db_mysql.read_titik_ukur(db, data.at(1).toInt(), "Test", 0);
+                    for (int j = 0; j < dataAlarm.length(); j+=2) {
+//                        temp_nama.append(dataAlarm.at(j));
+//                        temp_titik_ukur.append(dataAlarm.at(j+1));
+                        m_nama_titik_ukur[i].append(dataAlarm.at(j));
+                        m_titik_ukur[i].append(dataAlarm.at(j+1));
+                    }
+                    break;
+                }
+            }
+        }
+    }
 
 }
 

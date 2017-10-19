@@ -28,10 +28,11 @@
 
 #define TIME_PERIOD     1000
 
-#define MAX_DATA        500
-#define MAX_RULE        100
+#define MAX_DATA        50
+#define MAX_RULE        10
 
 struct data_rules {
+    int id_alarm;
     QString logic;
     QString value;
     QString notif;
