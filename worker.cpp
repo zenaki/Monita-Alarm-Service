@@ -2,7 +2,7 @@
 
 worker::worker(QObject *parent) : QObject(parent)
 {   
-    QStringList id_tu;
+//    QStringList id_tu;
 //    int id = 0;
 ////    rds.reqRedis("del monita_alarm_service:test_rule", REDIS_ADDRESS, REDIS_PORT);
 //    for (int i = 0; i < MAX_DATA; i++) {
@@ -44,8 +44,166 @@ worker::worker(QObject *parent) : QObject(parent)
 ////        }
 //    }
 ////    rds.reqRedis("del monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
+    QStringList temp = cfg.read("CONFIG");
+    time_period = temp.at(0).toInt();
+    temp = cfg.read("REDIS");
+    redis_address = temp.at(0);
+    redis_port = temp.at(1).toInt();
 
     db = db_mysql.connect_db("rules");
+    readAlarmParameter();
+
+//    source.doSetup(threadSource, id_tu);
+//    source.moveToThread(&threadSource);
+//    threadSource.start();
+
+    notf = new notification();
+    connect(this, SIGNAL(sendNotif(QStringList,QDateTime,int)), notf, SLOT(RedisToJson(QStringList,QDateTime,int)));
+//    notf->doSetup(threadNotf);
+//    notf->moveToThread(&threadNotf);
+//    threadNotf.start();
+
+    QTimer *t = new QTimer(this);
+    connect(t, SIGNAL(timeout()), this, SLOT(doWork()));
+    t->start(time_period);
+}
+
+void worker::doWork()
+{
+    QDateTime temp_dateTime = QDateTime::currentDateTime();
+    qDebug() << "<< START Periksa Alarm << " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
+    readCurrentValue();
+    QString mysql_command;
+    QStringList alarm;
+    for (int i = 0; i < jml_data_alarm; i++) {
+        if (dAlarm[i].next_execute <= temp_dateTime) {
+            dAlarm[i].status = QString::number(dAlarm[i].currentValue) +  ";NORMAL";
+            dAlarm[i].last_execute = temp_dateTime;
+
+            for (int j = 0; j < dAlarm[i].jml_rules; j++) {
+                if (dAlarm[i].rules[j].logic == ">") {
+                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
+                    if (dAlarm[i].currentValue > temp_val.at(0).toInt()) {
+                        this->processAlarm(i,j,alarm);
+                        break;
+                    } else {
+                        dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
+                    }
+                } else if (dAlarm[i].rules[j].logic == "<") {
+                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
+                    if (dAlarm[i].currentValue < temp_val.at(0).toInt()) {
+                        this->processAlarm(i,j,alarm);
+                        break;
+                    } else {
+                        dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
+                    }
+                } else if (dAlarm[i].rules[j].logic == ">=") {
+                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
+                    if (dAlarm[i].currentValue >= temp_val.at(0).toInt()) {
+                        this->processAlarm(i,j,alarm);
+                        break;
+                    } else {
+                        dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
+                    }
+                } else if (dAlarm[i].rules[j].logic == "<=") {
+                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
+                    if (dAlarm[i].currentValue <= temp_val.at(0).toInt()) {
+                        this->processAlarm(i,j,alarm);
+                        break;
+                    } else {
+                        dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
+                    }
+                } else if (dAlarm[i].rules[j].logic == "=") {
+                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
+                    if (dAlarm[i].currentValue == temp_val.at(0).toInt()) {
+                        this->processAlarm(i,j,alarm);
+                        break;
+                    } else {
+                        dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
+                    }
+                } else if (dAlarm[i].rules[j].logic == "BETWEEN") {
+                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
+                    if (dAlarm[i].currentValue < temp_val.at(0).toInt() && dAlarm[i].currentValue > temp_val.at(1).toInt()) {
+                        this->processAlarm(i,j,alarm);
+                        break;
+                    } else {
+                        dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
+                    }
+                }
+            }
+        }
+    }
+    for (int i = 0; i < notf->m_clients.length(); i++) {
+        emit sendNotif(alarm, temp_dateTime, i);
+    }
+    if (alarm.length() > 0) {
+        for (int i = 0; i < alarm.length(); i+=5) {
+            if (i == alarm.length()-5) {
+                mysql_command = mysql_command +
+                        "(\\'" + alarm.at(i) +
+                        "\\',\\'" + alarm.at(i+1) +
+                        "\\',\\'" + alarm.at(i+2) +
+                        "\\',\\'" + alarm.at(i+3) +
+                        "\\',\\'" + alarm.at(i+4) + "\\')";
+            } else {
+                mysql_command = mysql_command +
+                        "(\\'" + alarm.at(i) +
+                        "\\',\\'" + alarm.at(i+1) +
+                        "\\',\\'" + alarm.at(i+2) +
+                        "\\',\\'" + alarm.at(i+3) +
+                        "\\',\\'" + alarm.at(i+4) + "\\'),";
+            }
+        }
+        db_mysql.write_alarm_history(db, mysql_command, "Test", 0);
+    }
+    qDebug() << ">> *END* Periksa Alarm >> " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
+}
+
+void worker::processAlarm(int idx_alarm, int idx_rules, QStringList &alarm)
+{
+    if (dAlarm[idx_alarm].rules[idx_rules].temp_noise_time > 0) {
+        dAlarm[idx_alarm].rules[idx_rules].temp_noise_time--;
+        if (dAlarm[idx_alarm].rules[idx_rules].temp_noise_time == 0) {
+            dAlarm[idx_alarm].status = dAlarm[idx_alarm].rules[idx_rules].notif;
+            dAlarm[idx_alarm].last_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() - dAlarm[idx_alarm].rules[idx_rules].noise_time);
+//            dAlarm[idx_alarm].next_execute = dAlarm[idx_alarm].last_execute.addSecs(dAlarm[idx_alarm].rules[idx_rules].interval);
+            dAlarm[idx_alarm].next_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() + dAlarm[idx_alarm].rules[idx_rules].interval);
+
+            alarm.append(QString::number(dAlarm[idx_alarm].rules[idx_rules].id_alarm));
+            alarm.append(dAlarm[idx_alarm].id_tu);
+//            QString temp = QString::number(dAlarm[idx_alarm].last_execute.toTime_t() - dAlarm[idx_alarm].rules[idx_rules].noise_time);
+            alarm.append(QString::number(dAlarm[idx_alarm].last_execute.toTime_t()));
+            alarm.append(QString::number(dAlarm[idx_alarm].currentValue));
+            alarm.append(dAlarm[idx_alarm].status);
+        } else {
+            dAlarm[idx_alarm].next_execute = dAlarm[idx_alarm].last_execute.addSecs(1);
+        }
+    } else {
+        dAlarm[idx_alarm].rules[idx_rules].temp_noise_time = dAlarm[idx_alarm].rules[idx_rules].noise_time;
+    }
+}
+
+void worker::readCurrentValue()
+{
+//    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_data", REDIS_ADDRESS, REDIS_PORT);
+    QStringList request = rds.reqRedis("hlen monita_service:realtime", redis_address, redis_port);
+    if (request.length() > 0) {
+        int redis_len = request.at(0).toInt();
+//        request = rds.reqRedis("hgetall monita_alarm_service:test_data", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
+        QStringList request = rds.reqRedis("hgetall monita_service:realtime", redis_address, redis_port, redis_len*2);
+        for (int i = 0; i < request.length(); i+=2) {
+            for (int j = 0; j < jml_data_alarm; j++) {
+                if (request.at(i) == dAlarm[j].id_tu) {
+                    dAlarm[j].currentValue = request.at(i+1).toInt();
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void worker::readAlarmParameter()
+{
 //    db_mysql.read_titik_ukur(db, 1, "Test", 0);
     QStringList dataAlarm = db_mysql.read_data_alarm(db, "Test", 0);
     QTime time_temp;
@@ -73,7 +231,7 @@ worker::worker(QObject *parent) : QObject(parent)
                 dAlarm[jml_data_alarm].jml_rules++;
                 jml_data_alarm++;
 
-                id_tu.append(dataAlarm.at(i+1));
+//                id_tu.append(dataAlarm.at(i+1));
             } else {
                 if (dAlarm[jml_data_alarm-1].id_tu == dataAlarm.at(i+1)) {
                     dAlarm[jml_data_alarm-1].rules[dAlarm[jml_data_alarm-1].jml_rules].id_alarm = dataAlarm.at(i).toInt();
@@ -115,226 +273,11 @@ worker::worker(QObject *parent) : QObject(parent)
                     dAlarm[jml_data_alarm].jml_rules++;
                     jml_data_alarm++;
 
-                    id_tu.append(dataAlarm.at(i+1));
+//                    id_tu.append(dataAlarm.at(i+1));
                 }
-
             }
         }
     } else {
         return;
-    }
-
-//    source.doSetup(threadSource, id_tu);
-//    source.moveToThread(&threadSource);
-//    threadSource.start();
-
-    notf = new notification();
-    connect(this, SIGNAL(sendNotif(QStringList,QDateTime,int)), notf, SLOT(RedisToJson(QStringList,QDateTime,int)));
-//    notf->doSetup(threadNotf);
-//    notf->moveToThread(&threadNotf);
-//    threadNotf.start();
-
-    QTimer *t = new QTimer(this);
-    connect(t, SIGNAL(timeout()), this, SLOT(doWork()));
-    t->start(TIME_PERIOD);
-}
-
-void worker::doWork()
-{
-    qDebug() << "<< START Periksa Alarm << " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
-    readCurrentValue();
-    QString mysql_command;
-    QStringList alarm;
-    for (int i = 0; i < jml_data_alarm; i++) {
-        if (dAlarm[i].next_execute <= QDateTime::currentDateTime()) {
-            dAlarm[i].status = QString::number(dAlarm[i].currentValue) +  ";NORMAL";
-            dAlarm[i].last_execute = QDateTime::currentDateTime();
-
-            for (int j = 0; j < dAlarm[i].jml_rules; j++) {
-                if (dAlarm[i].rules[j].logic == ">") {
-                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
-                    if (dAlarm[i].currentValue > temp_val.at(0).toInt()) {
-                        if (dAlarm[i].rules[j].temp_noise_time > 0) {
-                            dAlarm[i].rules[j].temp_noise_time--;
-                            if (dAlarm[i].rules[j].temp_noise_time == 0) {
-                                dAlarm[i].status = dAlarm[i].rules[j].notif;
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period + (dAlarm[i].rules[j].noise_time * (-1)) + dAlarm[i].rules[j].interval);
-
-                                alarm.append(QString::number(dAlarm[i].rules[j].id_alarm));
-                                alarm.append(dAlarm[i].id_tu);
-                                alarm.append(QString::number(QDateTime::currentMSecsSinceEpoch())
-                                             .left(QString::number(QDateTime::currentMSecsSinceEpoch()).length() - 3));
-                                alarm.append(QString::number(dAlarm[i].currentValue));
-                                alarm.append(dAlarm[i].status);
-                            } else {
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(1);
-                            }
-                        } else {
-                            dAlarm[i].rules[j].temp_noise_time = dAlarm[i].rules[j].noise_time;
-                        }
-                        break;
-                    }
-                } else if (dAlarm[i].rules[j].logic == "<") {
-                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
-                    if (dAlarm[i].currentValue < temp_val.at(0).toInt()) {
-                        if (dAlarm[i].rules[j].temp_noise_time > 0) {
-                            dAlarm[i].rules[j].temp_noise_time--;
-                            if (dAlarm[i].rules[j].temp_noise_time == 0) {
-                                dAlarm[i].status = dAlarm[i].rules[j].notif;
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period + (dAlarm[i].rules[j].noise_time * (-1)) + dAlarm[i].rules[j].interval);
-
-                                alarm.append(QString::number(dAlarm[i].rules[j].id_alarm));
-                                alarm.append(dAlarm[i].id_tu);
-                                alarm.append(QString::number(QDateTime::currentMSecsSinceEpoch())
-                                             .left(QString::number(QDateTime::currentMSecsSinceEpoch()).length() - 3));
-                                alarm.append(QString::number(dAlarm[i].currentValue));
-                                alarm.append(dAlarm[i].status);
-                            } else {
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(1);
-                            }
-                        } else {
-                            dAlarm[i].rules[j].temp_noise_time = dAlarm[i].rules[j].noise_time;
-                        }
-                        break;
-                    }
-                } else if (dAlarm[i].rules[j].logic == ">=") {
-                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
-                    if (dAlarm[i].currentValue >= temp_val.at(0).toInt()) {
-                        if (dAlarm[i].rules[j].temp_noise_time > 0) {
-                            dAlarm[i].rules[j].temp_noise_time--;
-                            if (dAlarm[i].rules[j].temp_noise_time == 0) {
-                                dAlarm[i].status = dAlarm[i].rules[j].notif;
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period + (dAlarm[i].rules[j].noise_time * (-1)) + dAlarm[i].rules[j].interval);
-
-                                alarm.append(QString::number(dAlarm[i].rules[j].id_alarm));
-                                alarm.append(dAlarm[i].id_tu);
-                                alarm.append(QString::number(QDateTime::currentMSecsSinceEpoch())
-                                             .left(QString::number(QDateTime::currentMSecsSinceEpoch()).length() - 3));
-                                alarm.append(QString::number(dAlarm[i].currentValue));
-                                alarm.append(dAlarm[i].status);
-                            } else {
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(1);
-                            }
-                        } else {
-                            dAlarm[i].rules[j].temp_noise_time = dAlarm[i].rules[j].noise_time;
-                        }
-                        break;
-                    }
-                } else if (dAlarm[i].rules[j].logic == "<=") {
-                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
-                    if (dAlarm[i].currentValue <= temp_val.at(0).toInt()) {
-                        if (dAlarm[i].rules[j].temp_noise_time > 0) {
-                            dAlarm[i].rules[j].temp_noise_time--;
-                            if (dAlarm[i].rules[j].temp_noise_time == 0) {
-                                dAlarm[i].status = dAlarm[i].rules[j].notif;
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period + (dAlarm[i].rules[j].noise_time * (-1)) + dAlarm[i].rules[j].interval);
-
-                                alarm.append(QString::number(dAlarm[i].rules[j].id_alarm));
-                                alarm.append(dAlarm[i].id_tu);
-                                alarm.append(QString::number(QDateTime::currentMSecsSinceEpoch())
-                                             .left(QString::number(QDateTime::currentMSecsSinceEpoch()).length() - 3));
-                                alarm.append(QString::number(dAlarm[i].currentValue));
-                                alarm.append(dAlarm[i].status);
-                            } else {
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(1);
-                            }
-                        } else {
-                            dAlarm[i].rules[j].temp_noise_time = dAlarm[i].rules[j].noise_time;
-                        }
-                        break;
-                    }
-                } else if (dAlarm[i].rules[j].logic == "=") {
-                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
-                    if (dAlarm[i].currentValue == temp_val.at(0).toInt()) {
-                        if (dAlarm[i].rules[j].temp_noise_time > 0) {
-                            dAlarm[i].rules[j].temp_noise_time--;
-                            if (dAlarm[i].rules[j].temp_noise_time == 0) {
-                                dAlarm[i].status = dAlarm[i].rules[j].notif;
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period + (dAlarm[i].rules[j].noise_time * (-1)) + dAlarm[i].rules[j].interval);
-
-                                alarm.append(QString::number(dAlarm[i].rules[j].id_alarm));
-                                alarm.append(dAlarm[i].id_tu);
-                                alarm.append(QString::number(QDateTime::currentMSecsSinceEpoch())
-                                             .left(QString::number(QDateTime::currentMSecsSinceEpoch()).length() - 3));
-                                alarm.append(QString::number(dAlarm[i].currentValue));
-                                alarm.append(dAlarm[i].status);
-                            } else {
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(1);
-                            }
-                        } else {
-                            dAlarm[i].rules[j].temp_noise_time = dAlarm[i].rules[j].noise_time;
-                        }
-                        break;
-                    }
-                } else if (dAlarm[i].rules[j].logic == "BETWEEN") {
-                    QStringList temp_val = dAlarm[i].rules[j].value.split(";");
-                    if (dAlarm[i].currentValue < temp_val.at(0).toInt() && dAlarm[i].currentValue > temp_val.at(1).toInt()) {
-                        if (dAlarm[i].rules[j].temp_noise_time > 0) {
-                            dAlarm[i].rules[j].temp_noise_time--;
-                            if (dAlarm[i].rules[j].temp_noise_time == 0) {
-                                dAlarm[i].status = dAlarm[i].rules[j].notif;
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period + (dAlarm[i].rules[j].noise_time * (-1)) + dAlarm[i].rules[j].interval);
-
-                                alarm.append(QString::number(dAlarm[i].rules[j].id_alarm));
-                                alarm.append(dAlarm[i].id_tu);
-                                alarm.append(QString::number(QDateTime::currentMSecsSinceEpoch())
-                                             .left(QString::number(QDateTime::currentMSecsSinceEpoch()).length() - 3));
-                                alarm.append(QString::number(dAlarm[i].currentValue));
-                                alarm.append(dAlarm[i].status);
-                            } else {
-                                dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(1);
-                            }
-                        } else {
-                            dAlarm[i].rules[j].temp_noise_time = dAlarm[i].rules[j].noise_time;
-                        }
-                        break;
-                    }
-                } else {
-                    dAlarm[i].next_execute = dAlarm[i].last_execute.addSecs(dAlarm[i].scan_period);
-                }
-            }
-        }
-    }
-    for (int i = 0; i < notf->m_clients.length(); i++) {
-        emit sendNotif(alarm, QDateTime::currentDateTime(), i);
-    }
-    if (alarm.length() > 0) {
-        for (int i = 0; i < alarm.length(); i+=5) {
-            if (i == alarm.length()-5) {
-                mysql_command = mysql_command +
-                        "(\\'" + alarm.at(i) +
-                        "\\',\\'" + alarm.at(i+1) +
-                        "\\',\\'" + alarm.at(i+2) +
-                        "\\',\\'" + alarm.at(i+3) +
-                        "\\',\\'" + alarm.at(i+4) + "\\')";
-            } else {
-                mysql_command = mysql_command +
-                        "(\\'" + alarm.at(i) +
-                        "\\',\\'" + alarm.at(i+1) +
-                        "\\',\\'" + alarm.at(i+2) +
-                        "\\',\\'" + alarm.at(i+3) +
-                        "\\',\\'" + alarm.at(i+4) + "\\'),";
-            }
-        }
-        db_mysql.write_alarm_history(db, mysql_command, "Test", 0);
-    }
-    qDebug() << ">> *END* Periksa Alarm >> " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
-}
-
-void worker::readCurrentValue() {
-//    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_data", REDIS_ADDRESS, REDIS_PORT);
-    QStringList request = rds.reqRedis("hlen monita_service:realtime", REDIS_ADDRESS, REDIS_PORT);
-    if (request.length() > 0) {
-        int redis_len = request.at(0).toInt();
-//        request = rds.reqRedis("hgetall monita_alarm_service:test_data", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
-        QStringList request = rds.reqRedis("hgetall monita_service:realtime", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
-        for (int i = 0; i < request.length(); i+=2) {
-            for (int j = 0; j < jml_data_alarm; j++) {
-                if (request.at(i) == dAlarm[j].id_tu) {
-                    dAlarm[j].currentValue = request.at(i+1).toInt();
-                    break;
-                }
-            }
-        }
     }
 }

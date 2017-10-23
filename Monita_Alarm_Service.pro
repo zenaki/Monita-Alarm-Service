@@ -12,17 +12,21 @@ TEMPLATE = app
 SOURCES += main.cpp \
     worker.cpp \
     redis.cpp \
-    datasource.cpp \
+#    datasource.cpp \
     mysql.cpp \
-    notification.cpp
+    notification.cpp \
+    monita_log.cpp \
+    config.cpp
 
 HEADERS += \
     worker.h \
     redis.h \
     utama.h \
-    datasource.h \
+#    datasource.h \
     mysql.h \
-    notification.h
+    notification.h \
+    monita_log.h \
+    config.h
 
 INCLUDEPATH += /usr/local/include/hiredis
 LIBS += -L/usr/local/lib -lhiredis

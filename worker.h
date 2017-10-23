@@ -4,9 +4,11 @@
 #include <QObject>
 
 #include "utama.h"
-#include "datasource.h"
+//#include "datasource.h"
 #include "notification.h"
 #include "mysql.h"
+#include "config.h"
+#include "monita_log.h"
 
 class worker : public QObject
 {
@@ -18,8 +20,10 @@ public:
     int jml_data_alarm;
 
 private:
+    config cfg;
+    monita_log log;
     redis rds;
-    dataSource source;
+//    dataSource source;
     QThread threadSource;
     notification *notf;
     QThread threadNotf;
@@ -28,6 +32,12 @@ private:
 
     void readCurrentValue();
 
+    int time_period;
+    QString redis_address;
+    int redis_port;
+
+    void processAlarm(int idx_alarm, int idx_rules, QStringList &alarm);
+    void readAlarmParameter();
 private slots:
     void doWork();
 

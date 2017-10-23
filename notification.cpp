@@ -3,11 +3,15 @@
 
 notification::notification(worker *parent) : QObject(parent)
 {
+    QStringList temp = cfg.read("CONFIG");
+    time_period = temp.at(0).toInt();
+    webSocket_port = temp.at(1).toInt();
+
     m_pWebSocketServer = new QWebSocketServer(QStringLiteral("WebSocket Server"), QWebSocketServer::NonSecureMode, this);
 
     bool webSocketServer = false;
     while (!webSocketServer) {
-        if (m_pWebSocketServer->listen(QHostAddress::Any, 2345)) {
+        if (m_pWebSocketServer->listen(QHostAddress::Any, webSocket_port)) {
 //            log.write("WebSocket","Server listening on port : " + QString::number(port),
 //                      monita_cfg.config.at(7).toInt());
             connect(m_pWebSocketServer, &QWebSocketServer::newConnection,this, &notification::onNewConnection);
@@ -50,7 +54,7 @@ void notification::doSetup(QThread &cThread)
 
     QTimer *t = new QTimer(this);
     connect(t, SIGNAL(timeout()), this, SLOT(doWork()));
-    t->start(TIME_PERIOD);
+    t->start(time_period);
 }
 
 void notification::doWork()
@@ -97,11 +101,11 @@ void notification::RedisToJson(QStringList data, QDateTime dt, int index)
 
 void notification::WriteToJson(QJsonObject json, QDateTime dt, int index)
 {
-    QString path = ".MonAlaSerConfig/NotMon_" + dt.date().toString("yyyyMMdd") + ".json";
+    QString path = QString(PATH_MONITA) + "/NotMon_" + dt.date().toString("yyyyMMdd") + ".json";
     QFile visual_json_file(path);
     if (!visual_json_file.exists()) {
         QDir dir;
-        dir.mkpath(".MonAlaSerConfig");
+        dir.mkpath(PATH_MONITA);
     }
     if (visual_json_file.open(QIODevice::ReadWrite|QIODevice::Truncate)) {
         QJsonDocument saveDoc(json);
@@ -117,6 +121,7 @@ void notification::WriteToJson(QJsonObject json, QDateTime dt, int index)
 //            }
 //        }
     }
+    visual_json_file.remove();
 }
 
 void notification::onNewConnection()

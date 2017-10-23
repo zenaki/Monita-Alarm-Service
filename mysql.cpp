@@ -122,7 +122,9 @@ void mysql::write_alarm_history(QSqlDatabase db, QString data, QString type, int
 //        q.prepare(query);
 //        qDebug() << query;
         if (q.exec(query)) {
-//            qDebug() << "Berhasi";
+//            qDebug() << "Berhasil";
+        } else {
+//            qDebug() << "Gagal";
         }
 
         db.close();

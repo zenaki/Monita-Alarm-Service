@@ -9,6 +9,8 @@
 
 #include "utama.h"
 #include "mysql.h"
+#include "config.h"
+#include "monita_log.h"
 
 class worker;
 
@@ -28,6 +30,11 @@ public:
     mysql db_mysql;
     QSqlDatabase db;
     redis rds;
+    config cfg;
+    monita_log log;
+
+    int time_period;
+    int webSocket_port;
 
     void onNewConnection();
     void processTextMessage(QString message);
