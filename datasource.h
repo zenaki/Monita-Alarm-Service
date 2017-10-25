@@ -12,11 +12,15 @@ class dataSource : public QObject
 public:
     explicit dataSource(QObject *parent = 0);
 
-    void doSetup(QThread &cThread, QStringList titik_ukur);
+    void doSetup(QThread &cThread, QStringList titik_ukur, int t_period, QString r_address, int r_port);
 
 private:
     redis rds;
     QStringList id_tu;
+
+    int time_period;
+    QString redis_address;
+    int redis_port;
 
 private slots:
     void doWork();

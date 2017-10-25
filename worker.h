@@ -4,7 +4,7 @@
 #include <QObject>
 
 #include "utama.h"
-//#include "datasource.h"
+#include "datasource.h"
 #include "notification.h"
 #include "mysql.h"
 #include "config.h"
@@ -16,17 +16,18 @@ class worker : public QObject
 public:
     explicit worker(QObject *parent = 0);
 
-    struct data_alarm dAlarm[MAX_DATA];
+    struct data_alarm *dAlarm;
+    QList<data_alarm *> DataAlarm;
     int jml_data_alarm;
 
 private:
     config cfg;
     monita_log log;
     redis rds;
-//    dataSource source;
+    dataSource source;
     QThread threadSource;
     notification *notf;
-    QThread threadNotf;
+//    QThread threadNotf;
     mysql db_mysql;
     QSqlDatabase db;
 

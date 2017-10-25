@@ -26,11 +26,15 @@
 #define PATH_MONITA_LOG             ".MonAlaSerConfig/monita-alarm-log.txt"
 #define PATH_MONITA                 ".MonAlaSerConfig"
 
-//#define REDIS_ADDRESS   "192.168.3.4"
-//#define REDIS_ADDRESS   "127.0.0.1"
-//#define REDIS_PORT      6379
+//#define SIMULATION
 
-//#define TIME_PERIOD     1000
+#ifdef SIMULATION
+    #define REDIS_ADDRESS   "192.168.3.4"
+    #define REDIS_ADDRESS   "127.0.0.1"
+    #define REDIS_PORT      6379
+
+    #define TIME_PERIOD     1000
+#endif
 
 #define MAX_DATA        50
 #define MAX_RULE        10

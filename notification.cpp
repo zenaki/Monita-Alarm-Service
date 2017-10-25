@@ -192,3 +192,19 @@ void notification::socketDisconnected()
         pClient->deleteLater();
     }
 }
+
+void notification::sendMail(QString username, QString password, QString server, int port, QString recipient, QString subject, QString message)
+{
+    Smtp* smtp = new Smtp(username, password, server, port);
+    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
+
+
+    smtp->sendMail(username, recipient, subject, message);
+}
+
+void notification::mailSent(QString status)
+{
+//    if(status == "Message sent")
+//        qDebug() << "Message Sent ..!!";
+    qDebug() << status;
+}

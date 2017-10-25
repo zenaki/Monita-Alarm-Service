@@ -11,6 +11,7 @@
 #include "mysql.h"
 #include "config.h"
 #include "monita_log.h"
+#include "smtp.h"
 
 class worker;
 
@@ -42,10 +43,12 @@ public:
     void socketDisconnected();
 
     void WriteToJson(QJsonObject json, QDateTime dt, int index);
+    void sendMail(QString username, QString password, QString server, int port, QString recipient, QString subject, QString message);
 
 public slots:
     void doWork();
     void RedisToJson(QStringList data, QDateTime dt, int index);
+    void mailSent(QString status);
 
 Q_SIGNALS:
     void closed();
