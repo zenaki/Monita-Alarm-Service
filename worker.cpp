@@ -1,66 +1,49 @@
 #include "worker.h"
 
 worker::worker(QObject *parent) : QObject(parent)
-{       
-#ifdef SIMULATION
-    time_period = TIME_PERIOD;
-    redis_address = REDIS_ADDRESS;
-    redis_port = REDIS_PORT;
+{   
+//    QStringList id_tu;
+//    int id = 0;
+////    rds.reqRedis("del monita_alarm_service:test_rule", REDIS_ADDRESS, REDIS_PORT);
+//    for (int i = 0; i < MAX_DATA; i++) {
+//        dAlarm[i].id_tu = QString::number(qrand() % ((5000 + 1) - 1000) + 1000);
+//        id_tu.append(dAlarm[i].id_tu);
+//        dAlarm[i].jml_rules = 0;
 
-    QStringList id_tu;
-    int id = 0;
-    jml_data_alarm = 0;
-//    rds.reqRedis("del monita_alarm_service:test_rule", REDIS_ADDRESS, REDIS_PORT);
-    for (int i = 0; i < MAX_DATA; i++) {
-        dAlarm[i].id_tu = QString::number(qrand() % ((MAX_DATA*199 + 1) - 1000) + 1000);
-        id_tu.append(dAlarm[i].id_tu);
-        dAlarm[i].jml_rules = 0;
-
-//        for (int j = 0; j < (qrand() % ((MAX_RULE + 1) - 1) + 1); j++) {
+////        for (int j = 0; j < (qrand() % ((MAX_RULE + 1) - 1) + 1); j++) {
 //        for (int j = 0; j < MAX_RULE; j++) {
-        for (int j = 0; j < 1; j++) {
-            dAlarm[i].rules[dAlarm[i].jml_rules].id_alarm = id++;
-            if (j % 2 == 0) {
+//            dAlarm[i].rules[dAlarm[i].jml_rules].id_alarm = id++;
+//            if (j % 2 == 0) {
 //                int val1 = qrand() % ((2000 + 1) - 1000) + 1000;
-                int val1 = 0;
-                dAlarm[i].rules[dAlarm[i].jml_rules].logic = ">";
-                dAlarm[i].rules[dAlarm[i].jml_rules].value = QString::number(val1);
-                dAlarm[i].rules[dAlarm[i].jml_rules].notif = "More_Than_"+ QString::number(val1);
-            } else {
-                int val2 = qrand() % ((1000 + 1) - 1) + 1;
-                dAlarm[i].rules[dAlarm[i].jml_rules].logic = "<";
-                dAlarm[i].rules[dAlarm[i].jml_rules].value = QString::number(val2);
-                dAlarm[i].rules[dAlarm[i].jml_rules].notif = "More_Than_"+ QString::number(val2);
-            }
-            dAlarm[i].rules[dAlarm[i].jml_rules].noise_time = qrand() % ((5 + 1) - 1) + 1;
+//                dAlarm[i].rules[dAlarm[i].jml_rules].logic = "mt";
+//                dAlarm[i].rules[dAlarm[i].jml_rules].value = QString::number(val1);
+//                dAlarm[i].rules[dAlarm[i].jml_rules].notif = "More_Than_"+ QString::number(val1);
+//            } else {
+//                int val2 = qrand() % ((1000 + 1) - 1) + 1;
+//                dAlarm[i].rules[dAlarm[i].jml_rules].logic = "lt";
+//                dAlarm[i].rules[dAlarm[i].jml_rules].value = QString::number(val2);
+//                dAlarm[i].rules[dAlarm[i].jml_rules].notif = "More_Than_"+ QString::number(val2);
+//            }
+////            dAlarm[i].rules[dAlarm[i].jml_rules].noise_time = qrand() % ((5 + 1) - 1) + 1;
 //            dAlarm[i].rules[dAlarm[i].jml_rules].noise_time = 1;
-            dAlarm[i].rules[dAlarm[i].jml_rules].interval = qrand() % ((60 + 1) - 1) + 1;
+////            dAlarm[i].rules[dAlarm[i].jml_rules].interval = qrand() % ((60 + 1) - 1) + 1;
 //            dAlarm[i].rules[dAlarm[i].jml_rules].interval = 1;
-            dAlarm[i].jml_rules++;
-        }
-
-        dAlarm[i].currentValue = 0;
-        dAlarm[i].scan_period = qrand() % ((60 + 1) - 1) + 1;
-//        dAlarm[i].scan_period = 1;
-        dAlarm[i].next_execute = QDateTime::currentDateTime();
-
-//        for (int j = 0; j < dAlarm[i].jml_rules; j++) {
-//            rds.reqRedis("hset monita_alarm_service:test_rule " +
-//                         dAlarm[i].id_tu + ";" + dAlarm[i].rules[j].logic + ";" + dAlarm[i].rules[j].value + " " +
-//                         dAlarm[i].rules[j].notif
-//                         , REDIS_ADDRESS, REDIS_PORT);
+//            dAlarm[i].jml_rules++;
 //        }
 
-        jml_data_alarm++;
-    }
-//    rds.reqRedis("del monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
+//        dAlarm[i].currentValue = 0;
+////        dAlarm[i].scan_period = qrand() % ((60 + 1) - 1) + 1;
+//        dAlarm[i].scan_period = 1;
+//        dAlarm[i].next_execute = QDateTime::currentDateTime();
 
-    source.doSetup(threadSource, id_tu, time_period, redis_address, redis_port);
-    source.moveToThread(&threadSource);
-    threadSource.start();
-
-    db = db_mysql.connect_db("rules");
-#else
+////        for (int j = 0; j < dAlarm[i].jml_rules; j++) {
+////            rds.reqRedis("hset monita_alarm_service:test_rule " +
+////                         dAlarm[i].id_tu + ";" + dAlarm[i].rules[j].logic + ";" + dAlarm[i].rules[j].value + " " +
+////                         dAlarm[i].rules[j].notif
+////                         , REDIS_ADDRESS, REDIS_PORT);
+////        }
+//    }
+////    rds.reqRedis("del monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
     QStringList temp = cfg.read("CONFIG");
     time_period = temp.at(0).toInt();
     temp = cfg.read("REDIS");
@@ -69,18 +52,13 @@ worker::worker(QObject *parent) : QObject(parent)
 
     db = db_mysql.connect_db("rules");
     readAlarmParameter();
-#endif
+
+//    source.doSetup(threadSource, id_tu);
+//    source.moveToThread(&threadSource);
+//    threadSource.start();
 
     notf = new notification();
     connect(this, SIGNAL(sendNotif(QStringList,QDateTime,int)), notf, SLOT(RedisToJson(QStringList,QDateTime,int)));
-//    notf->sendMail(
-//                "application.beta.tester@gmail.com",
-//                "dendygema-P@$$w0rd",
-//                "smtp.gmail.com",
-//                465,
-//                "dendy@daunbiru.com",
-//                "Test Lagi yang ke empat !!",
-//                "Yang ini beneran ..");
 //    notf->doSetup(threadNotf);
 //    notf->moveToThread(&threadNotf);
 //    threadNotf.start();
@@ -162,11 +140,11 @@ void worker::doWork()
         for (int i = 0; i < alarm.length(); i+=5) {
             if (i == alarm.length()-5) {
                 mysql_command = mysql_command +
-                        "(\\'" + alarm.at(i) +              // ID Alarm
-                        "\\',\\'" + alarm.at(i+1) +         // ID Titik Ukur
-                        "\\',\\'" + alarm.at(i+2) +         // Last Execute
-                        "\\',\\'" + alarm.at(i+3) +         // Current Value
-                        "\\',\\'" + alarm.at(i+4) + "\\')"; // Status
+                        "(\\'" + alarm.at(i) +
+                        "\\',\\'" + alarm.at(i+1) +
+                        "\\',\\'" + alarm.at(i+2) +
+                        "\\',\\'" + alarm.at(i+3) +
+                        "\\',\\'" + alarm.at(i+4) + "\\')";
             } else {
                 mysql_command = mysql_command +
                         "(\\'" + alarm.at(i) +
@@ -189,7 +167,7 @@ void worker::processAlarm(int idx_alarm, int idx_rules, QStringList &alarm)
             dAlarm[idx_alarm].status = dAlarm[idx_alarm].rules[idx_rules].notif;
             dAlarm[idx_alarm].last_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() - dAlarm[idx_alarm].rules[idx_rules].noise_time);
 //            dAlarm[idx_alarm].next_execute = dAlarm[idx_alarm].last_execute.addSecs(dAlarm[idx_alarm].rules[idx_rules].interval);
-            dAlarm[idx_alarm].next_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() + dAlarm[idx_alarm].rules[idx_rules].interval - dAlarm[idx_alarm].scan_period);
+            dAlarm[idx_alarm].next_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() + dAlarm[idx_alarm].rules[idx_rules].interval);
 
             alarm.append(QString::number(dAlarm[idx_alarm].rules[idx_rules].id_alarm));
             alarm.append(dAlarm[idx_alarm].id_tu);
@@ -207,18 +185,12 @@ void worker::processAlarm(int idx_alarm, int idx_rules, QStringList &alarm)
 
 void worker::readCurrentValue()
 {
-#ifdef SIMULATION
-    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_data", redis_address, redis_port);
-#else
+//    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_data", REDIS_ADDRESS, REDIS_PORT);
     QStringList request = rds.reqRedis("hlen monita_service:realtime", redis_address, redis_port);
-#endif
     if (request.length() > 0) {
         int redis_len = request.at(0).toInt();
-#ifdef SIMULATION
-        request = rds.reqRedis("hgetall monita_alarm_service:test_data", redis_address, redis_port, redis_len*2);
-#else
-        request = rds.reqRedis("hgetall monita_service:realtime", redis_address, redis_port, redis_len*2);
-#endif
+//        request = rds.reqRedis("hgetall monita_alarm_service:test_data", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
+        QStringList request = rds.reqRedis("hgetall monita_service:realtime", redis_address, redis_port, redis_len*2);
         for (int i = 0; i < request.length(); i+=2) {
             for (int j = 0; j < jml_data_alarm; j++) {
                 if (request.at(i) == dAlarm[j].id_tu) {
