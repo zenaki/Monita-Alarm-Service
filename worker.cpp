@@ -167,7 +167,7 @@ void worker::processAlarm(int idx_alarm, int idx_rules, QStringList &alarm)
             dAlarm[idx_alarm].status = dAlarm[idx_alarm].rules[idx_rules].notif;
             dAlarm[idx_alarm].last_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() - dAlarm[idx_alarm].rules[idx_rules].noise_time);
 //            dAlarm[idx_alarm].next_execute = dAlarm[idx_alarm].last_execute.addSecs(dAlarm[idx_alarm].rules[idx_rules].interval);
-            dAlarm[idx_alarm].next_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() + dAlarm[idx_alarm].rules[idx_rules].interval);
+            dAlarm[idx_alarm].next_execute = QDateTime::fromTime_t(dAlarm[idx_alarm].last_execute.toTime_t() + dAlarm[idx_alarm].rules[idx_rules].interval - dAlarm[idx_alarm].scan_period);
 
             alarm.append(QString::number(dAlarm[idx_alarm].rules[idx_rules].id_alarm));
             alarm.append(dAlarm[idx_alarm].id_tu);
