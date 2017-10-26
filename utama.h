@@ -41,21 +41,21 @@ struct data_rules {
     QString value;
     QString notif;
     int noise_time;
-    int temp_noise_time;
+    int temp_noise_time = 0;
     int interval;
 };
 
 struct data_alarm {
     QString id_tu;
-    int jml_rules;
+    int jml_rules = 0;
     struct data_rules rules[2*MAX_RULE];
-    int currentValue;
+    int currentValue = 0;
     QString status;
 
     int scan_period;
     QDateTime last_execute;
     QDateTime next_execute;
-    QDateTime temp_time;
+    QDateTime temp_time = QDateTime::fromTime_t(0);
 };
 
 #endif // UTAMA_H

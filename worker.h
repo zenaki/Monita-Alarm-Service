@@ -16,7 +16,8 @@ class worker : public QObject
 public:
     explicit worker(QObject *parent = 0);
 
-    struct data_alarm dAlarm[MAX_DATA];
+    struct data_alarm dAlarm;
+    QList<data_alarm > DataAlarm;
     int jml_data_alarm;
 
 private:
