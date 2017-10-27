@@ -60,6 +60,16 @@ void config::write(QJsonObject &json) const //Default
     configObject["DEBUG_DATABASE"] = false;
     configArray.append(configObject);
     json["CONFIG"] = configArray;
+
+    QJsonArray emailArray;
+    QJsonObject emailObject;
+    emailObject["SENDER"] = "sender@gmail.com";
+    emailObject["PASSWORD"] = "sender-password-email";
+    emailObject["SERVER"] = "smtp.gmail.com";
+    emailObject["PORT"] = 465;
+    emailObject["RECIPIENT"] = "dendy@daunbiru.com";
+    emailArray.append(emailObject);
+    json["EMAIL"] = emailArray;
 }
 
 bool config::loadConfig(config::SaveFormat saveFormat)

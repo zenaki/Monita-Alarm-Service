@@ -57,15 +57,27 @@ worker::worker(QObject *parent) : QObject(parent)
 //    source.moveToThread(&threadSource);
 //    threadSource.start();
 
+    rds.reqRedis("del monita_alarm_service:notification", redis_address, redis_port);
     notf = new notification();
     connect(this, SIGNAL(sendNotif(QStringList,QDateTime,int)), notf, SLOT(RedisToJson(QStringList,QDateTime,int)));
-//    notf->doSetup(threadNotf);
-//    notf->moveToThread(&threadNotf);
-//    threadNotf.start();
+    notf->doSetup(threadNotf);
+    notf->moveToThread(&threadNotf);
+    threadNotf.start();
+
+    qDebug() << "Send Email ..........";
+    notf->sendMail(
+                "application.beta.tester@gmail.com",
+                "dendygema-P@$$w0rd",
+                "smtp.gmail.com",
+                465,
+                "dendy@daunbiru.com",
+                "Monita Alarm Service",
+                "Service nya baru aja di restart nih om ..");
 
     QTimer *t = new QTimer(this);
     connect(t, SIGNAL(timeout()), this, SLOT(doWork()));
     t->start(time_period);
+//    doWork();
 }
 
 void worker::doWork()
@@ -73,7 +85,7 @@ void worker::doWork()
     QDateTime temp_dateTime = QDateTime::currentDateTime();
     qDebug() << "<< START Periksa Alarm << " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
     readCurrentValue();
-    QString mysql_command;
+//    QString mysql_command;
     QStringList alarm;
     for (int i = 0; i < jml_data_alarm; i++) {
         dAlarm = DataAlarm.at(i);
@@ -85,7 +97,7 @@ void worker::doWork()
                 if (dAlarm.rules[j].logic == ">") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
                     if (dAlarm.currentValue > temp_val.at(0).toInt()) {
-                        this->processAlarm(i,j,alarm);
+                        this->processAlarm(j,alarm);
                         break;
                     } else {
                         dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.scan_period);
@@ -93,7 +105,7 @@ void worker::doWork()
                 } else if (dAlarm.rules[j].logic == "<") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
                     if (dAlarm.currentValue < temp_val.at(0).toInt()) {
-                        this->processAlarm(i,j,alarm);
+                        this->processAlarm(j,alarm);
                         break;
                     } else {
                         dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.scan_period);
@@ -101,7 +113,7 @@ void worker::doWork()
                 } else if (dAlarm.rules[j].logic == ">=") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
                     if (dAlarm.currentValue >= temp_val.at(0).toInt()) {
-                        this->processAlarm(i,j,alarm);
+                        this->processAlarm(j,alarm);
                         break;
                     } else {
                         dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.scan_period);
@@ -109,7 +121,7 @@ void worker::doWork()
                 } else if (dAlarm.rules[j].logic == "<=") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
                     if (dAlarm.currentValue <= temp_val.at(0).toInt()) {
-                        this->processAlarm(i,j,alarm);
+                        this->processAlarm(j,alarm);
                         break;
                     } else {
                         dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.scan_period);
@@ -117,7 +129,7 @@ void worker::doWork()
                 } else if (dAlarm.rules[j].logic == "=") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
                     if (dAlarm.currentValue == temp_val.at(0).toInt()) {
-                        this->processAlarm(i,j,alarm);
+                        this->processAlarm(j,alarm);
                         break;
                     } else {
                         dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.scan_period);
@@ -125,7 +137,7 @@ void worker::doWork()
                 } else if (dAlarm.rules[j].logic == "BETWEEN") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
                     if (dAlarm.currentValue < temp_val.at(0).toInt() && dAlarm.currentValue > temp_val.at(1).toInt()) {
-                        this->processAlarm(i,j,alarm);
+                        this->processAlarm(j,alarm);
                         break;
                     } else {
                         dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.scan_period);
@@ -135,50 +147,51 @@ void worker::doWork()
         }
         DataAlarm[i] = dAlarm;
     }
-    for (int i = 0; i < notf->m_clients.length(); i++) {
-        emit sendNotif(alarm, temp_dateTime, i);
-    }
-    if (alarm.length() > 0) {
-        for (int i = 0; i < alarm.length(); i+=5) {
-            if (i == alarm.length()-5) {
-                mysql_command = mysql_command +
-                        "(\\'" + alarm.at(i) +
-                        "\\',\\'" + alarm.at(i+1) +
-                        "\\',\\'" + alarm.at(i+2) +
-                        "\\',\\'" + alarm.at(i+3) +
-                        "\\',\\'" + alarm.at(i+4) + "\\')";
-            } else {
-                mysql_command = mysql_command +
-                        "(\\'" + alarm.at(i) +
-                        "\\',\\'" + alarm.at(i+1) +
-                        "\\',\\'" + alarm.at(i+2) +
-                        "\\',\\'" + alarm.at(i+3) +
-                        "\\',\\'" + alarm.at(i+4) + "\\'),";
-            }
-        }
-        db_mysql.write_alarm_history(db, mysql_command, "Test", 0);
+    for (int i = 0; i < alarm.length(); i+=5) {
+        rds.reqRedis("hset monita_alarm_service:notification " +
+                     alarm.at(i) + ";" + alarm.at(i+1) + ";" + alarm.at(i+2) + " " +
+                     alarm.at(i+3) + ";" + alarm.at(i+4)
+                     , redis_address, redis_port);
     }
     qDebug() << ">> *END* Periksa Alarm >> " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
+
+//    for (int i = 0; i < jml_data_alarm; i++) {
+//        ProcessAlarm *procAlarm = new ProcessAlarm;
+//        QThread *threadAlarm = new QThread;
+
+//        dAlarm = DataAlarm.at(i);
+//        procAlarm->doSetup(threadAlarm, dAlarm);
+//        procAlarm->moveToThread(threadAlarm);
+
+//        AlarmObj << procAlarm;
+//        AlarmThread << threadAlarm;
+
+//        AlarmThread[i]->start();
+//    }
 }
 
-void worker::processAlarm(int idx_alarm, int idx_rules, QStringList &alarm)
+void worker::processAlarm(int idx_rules, QStringList &alarm)
 {
     if (dAlarm.rules[idx_rules].temp_noise_time > 0) {
         dAlarm.rules[idx_rules].temp_noise_time--;
         if (dAlarm.rules[idx_rules].temp_noise_time == 0) {
             dAlarm.status = dAlarm.rules[idx_rules].notif;
             dAlarm.last_execute = QDateTime::fromTime_t(dAlarm.last_execute.toTime_t() - dAlarm.rules[idx_rules].noise_time);
-//            dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.rules[idx_rules].interval);
-            dAlarm.next_execute = QDateTime::fromTime_t(dAlarm.last_execute.toTime_t() + dAlarm.rules[idx_rules].interval - dAlarm.scan_period);
-
+            if (dAlarm.rules[idx_rules].interval > dAlarm.scan_period) {
+                dAlarm.next_execute = QDateTime::fromTime_t(
+                            dAlarm.last_execute.toTime_t() + dAlarm.rules[idx_rules].interval - dAlarm.scan_period);
+            } else {
+                dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.rules[idx_rules].interval);
+            }
             alarm.append(QString::number(dAlarm.rules[idx_rules].id_alarm));
             alarm.append(dAlarm.id_tu);
 //            QString temp = QString::number(dAlarm.last_execute.toTime_t() - dAlarm.rules[idx_rules].noise_time);
-            alarm.append(QString::number(dAlarm.last_execute.toTime_t()));
+            alarm.append(QString::number(dAlarm.last_execute.toMSecsSinceEpoch())
+                         .left(QString::number(dAlarm.last_execute.toMSecsSinceEpoch()).length() - 3));
             alarm.append(QString::number(dAlarm.currentValue));
-            alarm.append(dAlarm.status);
+            alarm.append(dAlarm.status.replace(" ", "_"));
         } else {
-            dAlarm.next_execute = dAlarm.last_execute.addSecs(1);
+            dAlarm.next_execute = dAlarm.last_execute.addMSecs(time_period/2);
         }
     } else {
         dAlarm.rules[idx_rules].temp_noise_time = dAlarm.rules[idx_rules].noise_time;
@@ -215,6 +228,8 @@ void worker::readAlarmParameter()
     if (dataAlarm.length() > 0) {
         for (int i = 0; i < dataAlarm.length(); i+=9) {
             if (jml_data_alarm == 0) {
+                struct data_alarm temp_data;
+                dAlarm = temp_data;
                 dAlarm.rules[dAlarm.jml_rules].id_alarm = dataAlarm.at(i).toInt();
                 dAlarm.id_tu = dataAlarm.at(i+1);
                 dAlarm.rules[dAlarm.jml_rules].logic = dataAlarm.at(i+2);
@@ -251,6 +266,8 @@ void worker::readAlarmParameter()
 
                     DataAlarm[DataAlarm.length()-1] = dAlarm;
                 } else {
+                    struct data_alarm temp_data;
+                    dAlarm = temp_data;
                     dAlarm.rules[dAlarm.jml_rules].id_alarm = dataAlarm.at(i).toInt();
                     dAlarm.id_tu = dataAlarm.at(i+1);
                     dAlarm.rules[dAlarm.jml_rules].logic = dataAlarm.at(i+2);
@@ -274,4 +291,6 @@ void worker::readAlarmParameter()
     } else {
         return;
     }
+
+//    qDebug() << "Test";
 }

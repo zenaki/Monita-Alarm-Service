@@ -6,6 +6,9 @@ notification::notification(worker *parent) : QObject(parent)
     QStringList temp = cfg.read("CONFIG");
     time_period = temp.at(0).toInt();
     webSocket_port = temp.at(1).toInt();
+    temp = cfg.read("REDIS");
+    redis_address = temp.at(0);
+    redis_port = temp.at(1).toInt();
 
     m_pWebSocketServer = new QWebSocketServer(QStringLiteral("WebSocket Server"), QWebSocketServer::NonSecureMode, this);
 
@@ -59,19 +62,42 @@ void notification::doSetup(QThread &cThread)
 
 void notification::doWork()
 {
-//    QDateTime dt = QDateTime::currentDateTime();
-//    QStringList request = rds.reqRedis("hlen monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
-////    log.write("Redis",request.at(0) + " Data ..",
-////              monita_cfg.config.at(7).toInt());
-//    int redis_len = request.at(0).toInt();
-//    if (redis_len > 0) {
-//        request = rds.reqRedis("hgetall monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT, redis_len*2);
-
-//        for (int i = 0; i < m_clients.length(); i++) {
-//            this->RedisToJson(request, dt, i);
-//        }
-////        request = rds.reqRedis("del monita_service:vismon", address, port, redis_len*2);
-//    }
+    QDateTime dt = QDateTime::currentDateTime();
+    QStringList request = rds.reqRedis("hlen monita_alarm_service:notification", redis_address, redis_port);
+//    log.write("Redis",request.at(0) + " Data ..",
+//              monita_cfg.config.at(7).toInt());
+    int redis_len = request.at(0).toInt();
+    if (redis_len > 0) {
+        qDebug() << "XXX GET Notifications XXX " << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss:zzz");
+        request = rds.reqRedis("hgetall monita_alarm_service:notification", redis_address, redis_port, redis_len*2);
+        for (int i = 0; i < m_clients.length(); i++) {
+            this->RedisToJson(request, dt, i);
+        }
+        QString mysql_command, status;
+        for (int i = 0; i < request.length(); i+=2) {
+            QStringList list_temp1 = request.at(i).split(";");
+            QStringList list_temp2 = request.at(i+1).split(";");
+            if (i == request.length()-2) {
+                status = list_temp2[1].replace("_", " ");
+                mysql_command = mysql_command +
+                        "(\\'" + list_temp1.at(0) +
+                        "\\',\\'" + list_temp1.at(1) +
+                        "\\',\\'" + list_temp1.at(2) +
+                        "\\',\\'" + list_temp2.at(0) +
+                        "\\',\\'" + status + "\\')";
+            } else {
+                status = list_temp2[1].replace("_", " ");
+                mysql_command = mysql_command +
+                        "(\\'" + list_temp1.at(0) +                  // ID Alarm
+                        "\\',\\'" + list_temp1.at(1) +             // ID Titik Ukur
+                        "\\',\\'" + list_temp1.at(2) +             // Event Time
+                        "\\',\\'" + list_temp2.at(0) +             // Current Value
+                        "\\',\\'" + status + "\\'),";    // Status
+            }
+        }
+        db_mysql.write_alarm_history(db, mysql_command, "Test", 0);
+        request = rds.reqRedis("del monita_alarm_service:notification", redis_address, redis_port);
+    }
 }
 
 void notification::RedisToJson(QStringList data, QDateTime dt, int index)
@@ -79,17 +105,21 @@ void notification::RedisToJson(QStringList data, QDateTime dt, int index)
     QJsonObject json;
     QJsonObject AlaMonObject;
     QJsonArray AlaMonArray;
+    QString status;
 
-    for (int i = 0; i < data.length(); i+=5) {
+    for (int i = 0; i < data.length(); i+=2) {
+        QStringList list_temp1 = data.at(i).split(";");
+        QStringList list_temp2 = data.at(i+1).split(";");
+        status = list_temp2[1].replace("_", " ");
         for (int j = 0; j < m_titik_ukur[index].length(); j++) {
-            if (data.at(i+1) == m_titik_ukur[index][j]) {
-                if (data.at(i+4) != "NORMAL") {
-                    json["alarm_id"] = data.at(i);
+            if (list_temp1.at(1) == m_titik_ukur[index][j]) {
+                if (list_temp2.at(1) != "NORMAL") {
+                    json["alarm_id"] = list_temp1.at(0);
                     json["nama_titik"] = m_nama_titik_ukur[index][j];
-                    json["titik_ukur"] = data.at(i+1);
-                    json["time"] = data.at(i+2);
-                    json["current_value"] = data.at(i+3);
-                    json["status"] = data.at(i+4);
+                    json["titik_ukur"] = list_temp1.at(1);
+                    json["time"] = list_temp1.at(2);
+                    json["current_value"] = list_temp2.at(0);
+                    json["status"] = status;
                     AlaMonArray.append(json);
                 }
             }
@@ -191,4 +221,20 @@ void notification::socketDisconnected()
         m_clients.removeAll(pClient);
         pClient->deleteLater();
     }
+}
+
+void notification::sendMail(QString username, QString password, QString server, int port, QString recipient, QString subject, QString message)
+{
+    Smtp* smtp = new Smtp(username, password, server, port);
+    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
+
+
+    smtp->sendMail(username, recipient, subject, message);
+}
+
+void notification::mailSent(QString status)
+{
+//    if(status == "Message sent")
+//        qDebug() << "Message Sent ..!!";
+    qDebug() << status;
 }

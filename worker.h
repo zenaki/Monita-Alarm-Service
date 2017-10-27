@@ -9,6 +9,7 @@
 #include "mysql.h"
 #include "config.h"
 #include "monita_log.h"
+//#include "processalarm.h"
 
 class worker : public QObject
 {
@@ -18,6 +19,10 @@ public:
 
     struct data_alarm dAlarm;
     QList<data_alarm > DataAlarm;
+////    ProcessAlarm *procAlarm;
+//    QList<ProcessAlarm *> AlarmObj;
+////    QThread *threadAlarm;
+//    QList<QThread *> AlarmThread;
     int jml_data_alarm;
 
 private:
@@ -37,7 +42,7 @@ private:
     QString redis_address;
     int redis_port;
 
-    void processAlarm(int idx_alarm, int idx_rules, QStringList &alarm);
+    void processAlarm(int idx_rules, QStringList &alarm);
     void readAlarmParameter();
 private slots:
     void doWork();
