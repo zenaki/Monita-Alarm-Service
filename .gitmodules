@@ -1,0 +1,6 @@
+[submodule "3rdparty/SmtpClient"]
+	path = 3rdparty/SmtpClient
+	url = https://github.com/bluetiger9/SmtpClient-for-Qt.git
+[submodule "3rdparty/qcron"]
+	path = 3rdparty/qcron
+	url = https://github.com/mankalas/qcron.git

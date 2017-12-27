@@ -1,4 +1,4 @@
-QT += core sql network websockets
+QT += core sql network websockets script
 QT -= gui
 
 CONFIG += c++11
@@ -9,29 +9,52 @@ CONFIG -= app_bundle
 
 TEMPLATE = app
 
-SOURCES += main.cpp \
-    worker.cpp \
-    redis.cpp \
-#    datasource.cpp \
-    mysql.cpp \
-    notification.cpp \
-    monita_log.cpp \
-    config.cpp \
-#    processalarm.cpp \
-    smtp.cpp
+SOURCES += main.cpp                 \
+    controller/worker.cpp           \
+    modul/redis.cpp                 \
+#    controller/datasource.cpp       \
+    modul/mysql.cpp                 \
+    controller/notification.cpp     \
+    modul/monita_log.cpp            \
+    util/config.cpp \
+    controller/scheduler.cpp \
+    3rdparty/qcron/src/holiday.cpp \
+    3rdparty/qcron/src/qcron.cpp \
+    3rdparty/qcron/src/qcronfield.cpp \
+    3rdparty/qcron/src/qcronnode.cpp
+#    controller/processalarm.cpp     \
+#    modul/smtp.cpp
 
-HEADERS += \
-    worker.h \
-    redis.h \
-    utama.h \
-#    datasource.h \
-    mysql.h \
-    notification.h \
-    monita_log.h \
-    config.h \
-#    processalarm.h \
-    smtp.h
+HEADERS +=                          \
+    controller/worker.h             \
+    modul/redis.h                   \
+    util/utama.h                    \
+#    controller/datasource.h         \
+    modul/mysql.h                   \
+    controller/notification.h       \
+    modul/monita_log.h              \
+    util/config.h \
+    controller/scheduler.h \
+    3rdparty/qcron/src/holiday.hpp \
+    3rdparty/qcron/src/qcron.hpp \
+    3rdparty/qcron/src/qcronfield.hpp \
+    3rdparty/qcron/src/qcronnode.hpp
+#    controller/processalarm.h       \
+#    modul/smtp.h
 
 
 INCLUDEPATH += /usr/local/include/hiredis
 LIBS += -L/usr/local/lib -lhiredis
+
+# Location of SMTP Library
+SMTP_LIBRARY_LOCATION = $$PWD/3rdparty/SmtpClient
+
+win32:CONFIG(release, debug|release): LIBS += -L$$SMTP_LIBRARY_LOCATION/release/ -lSMTPEmail
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$SMTP_LIBRARY_LOCATION/debug/ -lSMTPEmail
+else:unix: LIBS += -L$$SMTP_LIBRARY_LOCATION -lSMTPEmail
+
+INCLUDEPATH += $$SMTP_LIBRARY_LOCATION
+DEPENDPATH += $$SMTP_LIBRARY_LOCATION
+
+INCLUDEPATH += $$PWD/3rdparty/qcron
+DEPENDPATH += $$PWD/3rdparty/qcron
