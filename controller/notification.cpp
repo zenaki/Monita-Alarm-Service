@@ -1,8 +1,15 @@
 #include "notification.h"
 #include "worker.h"
 
-notification::notification(worker *parent) : QObject(parent)
+notification::notification(worker *parent,
+                           QString username,
+                           QString password,
+                           QString server,
+                           int port) : QObject(parent)
 {
+    smtp = new Smtp(username, password, server, port);
+    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
+
     QStringList temp = cfg.read("CONFIG");
     time_period = temp.at(0).toInt();
     webSocket_port = temp.at(1).toInt();
@@ -180,9 +187,9 @@ void notification::sendNotification(QStringList notifParam)
 
     QStringList email_config = cfg.read("EMAIL");
     QString email_sender = email_config.at(0);
-    QString email_password = email_config.at(1);
-    QString email_server = email_config.at(2);
-    int email_port = email_config.at(3).toInt();
+//    QString email_password = email_config.at(1);
+//    QString email_server = email_config.at(2);
+//    int email_port = email_config.at(3).toInt();
 
     QStringList listEmail = db_mysql.read_email(db, titik_ukur, "MySQL", 0);
     QStringList listTempIndex = index.split(",");
@@ -192,22 +199,21 @@ void notification::sendNotification(QStringList notifParam)
             if (listTempTitikUkur.at(j) == listEmail.at(i)) {
                 sendMail(
                     email_sender,
-                    email_password,
-                    email_server,
-                    email_port,
+//                    email_password,
+//                    email_server,
+//                    email_port,
                     listEmail.at(i+1),
                     "Alarm from Measurement Point : " +
                             listEmail.at(0),
-                    "<font size=\"4\" color=\"red\"><b>"
-                    "\n</br>Measurement Point : " +
+                    "\nMeasurement Point : " +
                             notifParam.at(listTempIndex.at(j).toInt()+1) +
-                    "\n</br>Time              : " +
+                    "\nTime              : " +
                             notifParam.at(listTempIndex.at(j).toInt()+2) +
-                    "\n</br>Value             : " +
+                    "\nValue             : " +
                             notifParam.at(listTempIndex.at(j).toInt()+3) +
-                    "\n</br>Status            : " +
+                    "\nStatus            : " +
                             notifParam.at(listTempIndex.at(j).toInt()+4) +
-                    "\n</b></font>",
+                    "\n",
                     QStringList()
                 );
             }
@@ -287,64 +293,83 @@ void notification::socketDisconnected()
 
 void notification::sendMail(
         QString     username,
-        QString     password,
-        QString     server,
-        int         port,
+//        QString     password,
+//        QString     server,
+//        int         port,
         QString     recipient,
         QString     subject,
         QString     message,
         QStringList attachPath)
 {
-//    SmtpClient smtp(server, port, SmtpClient::SslConnection);
-    SmtpClient smtp(server, port, SmtpClient::TlsConnection);
-    smtp.setUser(username);
-    smtp.setPassword(password);
+////    SmtpClient smtp(server, port, SmtpClient::SslConnection);
+//    SmtpClient smtp(server, port, SmtpClient::TlsConnection);
+//    smtp.setUser(username);
+//    smtp.setPassword(password);
 
-    MimeMessage MimeMSG;
+//    MimeMessage MimeMSG;
 
-    EmailAddress sender(username, "Monita - Server");
-    MimeMSG.setSender(&sender);
+//    EmailAddress sender(username, "Monita - Server");
+//    MimeMSG.setSender(&sender);
 
-    EmailAddress to(recipient, "Monita - Client");
-    MimeMSG.addRecipient(&to);
+//    EmailAddress to(recipient, "Monita - Client");
+//    MimeMSG.addRecipient(&to);
 
-    MimeMSG.setSubject(subject);
+//    MimeMSG.setSubject(subject);
 
-    MimeText text;
-    text.setText(message);
-    MimeMSG.addPart(&text);
+//    MimeText text;
+//    text.setText(message);
+//    MimeMSG.addPart(&text);
 
-    for (int i = 0; i < attachPath.length(); i++) {
-        QFile path(attachPath.at(i));
-        if (path.exists()) {
-//            MimeMSG.addPart(new MimeAttachment(path));
-            MimeMSG.addPart(new MimeAttachment(new QFile(attachPath.at(i))));
-        }
-    }
+//    for (int i = 0; i < attachPath.length(); i++) {
+//        QFile path(attachPath.at(i));
+//        if (path.exists()) {
+////            MimeMSG.addPart(new MimeAttachment(path));
+//            MimeMSG.addPart(new MimeAttachment(new QFile(attachPath.at(i))));
+////            if (!path.open(QIODevice::ReadOnly))
+////            {
+////                log.write("Email", "Cannot Open Attachment File : " + attachPath.at(i), 0);
+////                    return ;
+////            }
+////            QByteArray bytes = path.readAll();
+////            message.append( "--frontier\n" );
+////            message.append( "Content-Type: application/octet-stream\nContent-Disposition: attachment; filename="+ QFileInfo(path.fileName()).fileName() +";\nContent-Transfer-Encoding: base64\n\n" );
+////            message.append(bytes.toBase64());
+////            message.append("\n");
+//        }
+//    }
 
-    if (!smtp.connectToHost()) {
-        log.write("Email", "Failed to connect to host!", 0);
-        return;
-    }
+//    if (!smtp.connectToHost()) {
+//        log.write("Email", "Failed to connect to host!", 0);
+//        return;
+//    }
 
-    if (!smtp.login()) {
-        log.write("Email", "Failed to login!", 0);
-        return;
-    }
+//    if (!smtp.login()) {
+//        log.write("Email", "Failed to login!", 0);
+//        return;
+//    }
 
-    if (!smtp.sendMail(MimeMSG)) {
-        log.write("Email", "Failed to send mail!", 0);
-        return;
-    } else {
-        log.write("Email", "Sending to " + recipient, 0);
-    }
+//    if (!smtp.sendMail(MimeMSG)) {
+//        log.write("Email", "Failed to send mail!", 0);
+//        return;
+//    } else {
+//        log.write("Email", "Sending to " + recipient, 0);
+//    }
 
-    smtp.quit();
+//    smtp.quit();
+
+//    Smtp *smtp = new Smtp(username, password, server, port);
+//    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
+
+    if( !attachPath.isEmpty() )
+        smtp->sendMail(username, recipient, subject, message, attachPath);
+    else
+        smtp->sendMail(username, recipient , subject, message);
 }
 
 void notification::mailSent(QString status)
 {
 //    if(status == "Message sent")
 //        qDebug() << "Message Sent ..!!";
-    qDebug() << status;
+//    qDebug() << status;
+    log.write("Email", status, 0);
 }

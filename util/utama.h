@@ -63,4 +63,11 @@ struct data_alarm {
     QDateTime temp_time = QDateTime::fromTime_t(0);
 };
 
+struct data_cron {
+    QString time;
+    QString path_reportTemplate;
+    QString path_reportConfig;
+    QStringList email;
+};
+
 #endif // UTAMA_H

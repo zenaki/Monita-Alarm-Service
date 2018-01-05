@@ -57,6 +57,9 @@ QStringList config::read(QString obj)
                 result.append(value.toObject().value("RECIPIENT").toString());
             }
         }
+        else if (obj == "RPT_GEN") {
+          result.append(object.value(obj).toString());
+        }
     }
     return result;
 }
@@ -76,6 +79,7 @@ void config::write(QJsonObject &json) const //Default
     configObject["WEBSOCKET_PORT"] = 2345;
     configObject["DEBUG_DATA"] = false;
     configObject["DEBUG_DATABASE"] = false;
+    configObject["ROOT_ASSETS"] = "/var/www/talisa/assets";
     configArray.append(configObject);
     json["CONFIG"] = configArray;
 
@@ -88,6 +92,8 @@ void config::write(QJsonObject &json) const //Default
     emailObject["RECIPIENT"] = "dendy@daunbiru.com";
     emailArray.append(emailObject);
     json["EMAIL"] = emailArray;
+
+    json["RPT_GEN"] = QString("path/to/report/generator/Report");
 }
 
 bool config::loadConfig(config::SaveFormat saveFormat)

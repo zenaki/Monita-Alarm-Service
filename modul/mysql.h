@@ -23,6 +23,7 @@ public:
 
     void write_alarm_history(QSqlDatabase db, QString data, QString type, int debug);
     QStringList read_email(QSqlDatabase db, QString titik_ukur, QString type, int debug);
+    QStringList read_cron(QSqlDatabase db, QString type, int debug);
 };
 
 #endif // MYSQL_H

@@ -159,3 +159,27 @@ QStringList mysql::read_email(QSqlDatabase db, QString titik_ukur, QString type,
     }
     return result;
 }
+
+QStringList mysql::read_cron(QSqlDatabase db, QString type, int debug)
+{
+    QStringList result;
+    if (db.isValid()) {
+        if (!db.isOpen()) {
+            db.open();
+        }
+        QString query;
+        QSqlQuery q(QSqlDatabase::database(db.connectionName()));
+        query = "call get_cron()";
+        if (q.exec(query)) {
+            while(q.next()) {
+                result.append(q.value(0).toString());
+                result.append(q.value(1).toString());
+                result.append(q.value(2).toString());
+            }
+        } else {
+            log.write(type, "Query fail : " + query, debug);
+        }
+        db.close();
+    }
+    return result;
+}

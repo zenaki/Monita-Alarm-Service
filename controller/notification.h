@@ -11,7 +11,8 @@
 #include "modul/mysql.h"
 #include "util/config.h"
 #include "modul/monita_log.h"
-#include "3rdparty/SmtpClient/src/SmtpMime"
+//#include "3rdparty/SmtpClient/src/SmtpMime"
+#include "modul/smtp.h"
 
 class worker;
 
@@ -19,7 +20,11 @@ class notification : public QObject
 {
     Q_OBJECT
 public:
-    explicit notification(worker *parent = 0);
+    explicit notification(worker     *parent = 0,
+                          QString     username = "",
+                          QString     password = "",
+                          QString     server = "",
+                          int         port = 0);
     ~notification();
 
     void doSetup(QThread &cThread);
@@ -47,9 +52,9 @@ public:
     void WriteToJson(QJsonObject json, QDateTime dt, int index);
     void sendMail(
             QString     username,
-            QString     password,
-            QString     server,
-            int         port,
+//            QString     password,
+//            QString     server,
+//            int         port,
             QString     recipient,
             QString     subject,
             QString     message,
@@ -57,6 +62,7 @@ public:
             );
 
     void sendNotification(QStringList notifParam);
+    Smtp *smtp;
 public slots:
     void doWork();
     void RedisToJson(QStringList data, QDateTime dt, int index);

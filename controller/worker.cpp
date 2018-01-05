@@ -66,7 +66,11 @@ worker::worker(QObject *parent) : QObject(parent)
 //    threadSource.start();
 
     rds.reqRedis("del monita_alarm_service:notification", redis_address, redis_port);
-    notf = new notification();
+    notf = new notification(0,
+                            email_sender,
+                            email_password,
+                            email_server,
+                            email_port);
     connect(this, SIGNAL(sendNotif(QStringList,QDateTime,int)), notf, SLOT(RedisToJson(QStringList,QDateTime,int)));
     notf->doSetup(threadNotf);
     notf->moveToThread(&threadNotf);
@@ -100,27 +104,29 @@ worker::worker(QObject *parent) : QObject(parent)
 //    qDebug() << "Send Email ..........";
 //    notf->sendMail(
 //                "application.beta.tester@gmail.com",
-//                "dendygema-P@$$w0rd",
-//                "smtp.gmail.com",
-//                465,
+////                "dendygema-P@$$w0rd",
+////                "smtp.gmail.com",
+////                465,
 //                "dendy@daunbiru.com",
-//                "Monita Alarm Service",
-//                "Service nya baru aja di restart nih om ..");
+//                "OVM - Server",
+//                "Test Kirim Email Attachment 15",
+//                QStringList("test.pdf"));
 
     notf->sendMail(
                 email_sender,
-                email_password,
-                email_server,
-                email_port,
+//                email_password,
+//                email_server,
+//                email_port,
                 email_recipient,
                 "Monita Alarm Service",
-                "Service nya baru aja di restart nih om ..",
-                QStringList());
+                "Service baru saja direstart ..",
+                QStringList("/home/ovm/test.pdf"));
 
     QTimer *t = new QTimer(this);
     connect(t, SIGNAL(timeout()), this, SLOT(doWork()));
     t->start(time_period);
-//    doWork();
+    doWork();
+//    qDebug() << "Test";
 }
 
 void worker::doWork()
@@ -273,6 +279,9 @@ void worker::readAlarmParameter()
 {
 //    db_mysql.read_titik_ukur(db, 1, "Test", 0);
     QStringList dataAlarm = db_mysql.read_data_alarm(db, "Test", 0);
+//    while (dataAlarm.length() == 0) {
+//        dataAlarm = db_mysql.read_data_alarm(db, "Test", 0);
+//    }
     QTime time_temp;
     jml_data_alarm = 0;
     if (dataAlarm.length() > 0) {
