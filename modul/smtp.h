@@ -38,6 +38,11 @@ public:
                    const QString &subject, const QString &body,
                    QStringList files = QStringList());
 
+    QString user;
+    QString pass;
+    QString host;
+    int port;
+
 signals:
     void status( const QString &);
 
@@ -56,10 +61,6 @@ private:
     QString from;
     QString rcpt;
     QString response;
-    QString user;
-    QString pass;
-    QString host;
-    int port;
     enum states{Tls, HandShake ,Auth,User,Pass,Rcpt,Mail,Data,Init,Body,Quit,Close};
     int state;
 

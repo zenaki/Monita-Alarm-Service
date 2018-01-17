@@ -1,14 +1,10 @@
 #include "notification.h"
 #include "worker.h"
 
-notification::notification(worker *parent,
-                           QString username,
-                           QString password,
-                           QString server,
-                           int port) : QObject(parent)
+notification::notification(worker *parent) : QObject(parent)
 {
-    smtp = new Smtp(username, password, server, port);
-    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
+//    smtp = new Smtp(username, password, server, port);
+//    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
 
     QStringList temp = cfg.read("CONFIG");
     time_period = temp.at(0).toInt();
@@ -65,6 +61,17 @@ void notification::doSetup(QThread &cThread)
     QTimer *t = new QTimer(this);
     connect(t, SIGNAL(timeout()), this, SLOT(doWork()));
     t->start(time_period);
+//    t->start(60000);
+//    sendMail(
+//        "application.beta.tester@gmail.com",
+//        "dendygema-P@$$w0rd",
+//        "smtp.gmail.com",
+//        465,
+//        "dendy@daunbiru.com",
+//        "Alarm",
+//        "Test",
+//        QStringList()
+//    );
 }
 
 void notification::doWork()
@@ -187,9 +194,9 @@ void notification::sendNotification(QStringList notifParam)
 
     QStringList email_config = cfg.read("EMAIL");
     QString email_sender = email_config.at(0);
-//    QString email_password = email_config.at(1);
-//    QString email_server = email_config.at(2);
-//    int email_port = email_config.at(3).toInt();
+    QString email_password = email_config.at(1);
+    QString email_server = email_config.at(2);
+    int email_port = email_config.at(3).toInt();
 
     QStringList listEmail = db_mysql.read_email(db, titik_ukur, "MySQL", 0);
     QStringList listTempIndex = index.split(",");
@@ -199,9 +206,9 @@ void notification::sendNotification(QStringList notifParam)
             if (listTempTitikUkur.at(j) == listEmail.at(i)) {
                 sendMail(
                     email_sender,
-//                    email_password,
-//                    email_server,
-//                    email_port,
+                    email_password,
+                    email_server,
+                    email_port,
                     listEmail.at(i+1),
                     "Alarm from Measurement Point : " +
                             listEmail.at(0),
@@ -216,6 +223,16 @@ void notification::sendNotification(QStringList notifParam)
                     "\n",
                     QStringList()
                 );
+//                sendMail(
+//                    email_sender,
+//                    email_password,
+//                    email_server,
+//                    email_port,
+//                    "dendy@daunbiru.com",
+//                    "Alarm",
+//                    "Tesr",
+//                    QStringList()
+//                );
             }
         }
     }
@@ -293,9 +310,9 @@ void notification::socketDisconnected()
 
 void notification::sendMail(
         QString     username,
-//        QString     password,
-//        QString     server,
-//        int         port,
+        QString     password,
+        QString     server,
+        int         port,
         QString     recipient,
         QString     subject,
         QString     message,
@@ -358,7 +375,8 @@ void notification::sendMail(
 //    smtp.quit();
 
 //    Smtp *smtp = new Smtp(username, password, server, port);
-//    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
+    smtp = new Smtp(username, password, server, port);;
+    connect(smtp, SIGNAL(status(QString)), this, SLOT(mailSent(QString)));
 
     if( !attachPath.isEmpty() )
         smtp->sendMail(username, recipient, subject, message, attachPath);
@@ -372,4 +390,14 @@ void notification::mailSent(QString status)
 //        qDebug() << "Message Sent ..!!";
 //    qDebug() << status;
     log.write("Email", status, 0);
+//    sendMail(
+//        "application.beta.tester@gmail.com",
+//        "dendygema-P@$$w0rd",
+//        "smtp.gmail.com",
+//        465,
+//        "dendy@daunbiru.com",
+//        "Alarm",
+//        "Test2",
+//        QStringList()
+//    );
 }

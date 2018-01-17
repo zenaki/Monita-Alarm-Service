@@ -64,10 +64,11 @@ struct data_alarm {
 };
 
 struct data_cron {
+    QString name;
     QString time;
-    QString path_reportTemplate;
-    QString path_reportConfig;
+    QString path_visualGroup;
     QStringList email;
+    QDateTime last_execute;
 };
 
 #endif // UTAMA_H

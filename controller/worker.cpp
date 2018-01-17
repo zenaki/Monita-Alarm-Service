@@ -43,7 +43,7 @@ worker::worker(QObject *parent) : QObject(parent)
 ////                         , REDIS_ADDRESS, REDIS_PORT);
 ////        }
 //    }
-////    rds.reqRedis("del monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
+//    rds.reqRedis("del monita_alarm_service:test_alarm", REDIS_ADDRESS, REDIS_PORT);
     QStringList temp = cfg.read("CONFIG");
     time_period = temp.at(0).toInt();
 
@@ -66,17 +66,13 @@ worker::worker(QObject *parent) : QObject(parent)
 //    threadSource.start();
 
     rds.reqRedis("del monita_alarm_service:notification", redis_address, redis_port);
-    notf = new notification(0,
-                            email_sender,
-                            email_password,
-                            email_server,
-                            email_port);
+    notf = new notification();
     connect(this, SIGNAL(sendNotif(QStringList,QDateTime,int)), notf, SLOT(RedisToJson(QStringList,QDateTime,int)));
     notf->doSetup(threadNotf);
     notf->moveToThread(&threadNotf);
     threadNotf.start();
 
-    schd = new scheduler();
+    schd = new scheduler(0, notf);
     schd->doSetup(threadSchd);
     schd->moveToThread(&threadSchd);
     threadSchd.start();
@@ -104,9 +100,9 @@ worker::worker(QObject *parent) : QObject(parent)
 //    qDebug() << "Send Email ..........";
 //    notf->sendMail(
 //                "application.beta.tester@gmail.com",
-////                "dendygema-P@$$w0rd",
-////                "smtp.gmail.com",
-////                465,
+//                "dendygema-P@$$w0rd",
+//                "smtp.gmail.com",
+//                465,
 //                "dendy@daunbiru.com",
 //                "OVM - Server",
 //                "Test Kirim Email Attachment 15",
@@ -114,9 +110,9 @@ worker::worker(QObject *parent) : QObject(parent)
 
     notf->sendMail(
                 email_sender,
-//                email_password,
-//                email_server,
-//                email_port,
+                email_password,
+                email_server,
+                email_port,
                 email_recipient,
                 "Monita Alarm Service",
                 "Service baru saja direstart ..",
@@ -154,6 +150,9 @@ void worker::doWork()
                     }
                 } else if (dAlarm.rules[j].logic == "<") {
                     QStringList temp_val = dAlarm.rules[j].value.split(";");
+//                    if (dAlarm.id_tu == "848019") {
+//                        qDebug() << "";
+//                    }
                     if (dAlarm.currentValue < temp_val.at(0).toInt()) {
                         this->processAlarm(j,alarm);
                         break;
@@ -229,13 +228,14 @@ void worker::processAlarm(int idx_rules, QStringList &alarm)
             dAlarm.status = dAlarm.rules[idx_rules].notif;
             dAlarm.last_execute = QDateTime::fromTime_t(dAlarm.last_execute.toTime_t() - dAlarm.rules[idx_rules].noise_time);
             if (dAlarm.rules[idx_rules].interval > dAlarm.scan_period) {
-                dAlarm.next_execute = QDateTime::fromTime_t(
-                            dAlarm.last_execute.toTime_t() + dAlarm.rules[idx_rules].interval - dAlarm.scan_period);
+//                dAlarm.next_execute = QDateTime::fromTime_t(
+//                            dAlarm.last_execute.toTime_t() + dAlarm.rules[idx_rules].interval - dAlarm.scan_period);
+                dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.rules[idx_rules].interval);
             } else {
                 dAlarm.next_execute = dAlarm.last_execute.addSecs(dAlarm.rules[idx_rules].interval);
             }
 //            if (dAlarm.id_tu == "848019") {
-//                qDebug() << "Test";
+//                qDebug() << "";
 //            }
             alarm.append(QString::number(dAlarm.rules[idx_rules].id_alarm));
             alarm.append(dAlarm.id_tu);

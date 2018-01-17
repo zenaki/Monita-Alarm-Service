@@ -175,6 +175,7 @@ QStringList mysql::read_cron(QSqlDatabase db, QString type, int debug)
                 result.append(q.value(0).toString());
                 result.append(q.value(1).toString());
                 result.append(q.value(2).toString());
+                result.append(q.value(3).toString());
             }
         } else {
             log.write(type, "Query fail : " + query, debug);

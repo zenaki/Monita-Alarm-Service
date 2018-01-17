@@ -66,6 +66,7 @@ void Smtp::sendMail(const QString &from, const QString &to, const QString &subje
             {
                 if (!file.open(QIODevice::ReadOnly))
                 {
+                    qDebug() << filePath << " Couldn't open";
 #ifdef DEBUG
                     qDebug("Couldn't open the file");
 #endif
@@ -76,6 +77,8 @@ void Smtp::sendMail(const QString &from, const QString &to, const QString &subje
                 message.append( "Content-Type: application/octet-stream\nContent-Disposition: attachment; filename="+ QFileInfo(file.fileName()).fileName() +";\nContent-Transfer-Encoding: base64\n\n" );
                 message.append(bytes.toBase64());
                 message.append("\n");
+            } else {
+                qDebug() << filePath << " not exists";
             }
         }
     }
@@ -115,6 +118,8 @@ void Smtp::stateChanged(QAbstractSocket::SocketState socketState)
 {
 #ifdef DEBUG
     qDebug() <<"stateChanged " << socketState;
+#else
+    Q_UNUSED(socketState);
 #endif
 }
 
@@ -122,6 +127,8 @@ void Smtp::errorReceived(QAbstractSocket::SocketError socketError)
 {
 #ifdef DEBUG
     qDebug() << "error " <<socketError;
+#else
+    Q_UNUSED(socketError);
 #endif
 }
 
@@ -285,7 +292,7 @@ void Smtp::readyRead()
         t->flush();
         // here, we just close.
         state = Close;
-        emit status( tr( "Message sent" ) );
+        emit status("Message sent to "+rcpt);
     }
     else if ( state == Close )
     {
@@ -296,7 +303,7 @@ void Smtp::readyRead()
     {
         // something broke.
         state = Close;
-        emit status( tr( "Failed to send message" ) );
+        emit status("Failed send message to "+rcpt);
     }
     response = "";
 }

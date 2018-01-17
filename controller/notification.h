@@ -20,11 +20,7 @@ class notification : public QObject
 {
     Q_OBJECT
 public:
-    explicit notification(worker     *parent = 0,
-                          QString     username = "",
-                          QString     password = "",
-                          QString     server = "",
-                          int         port = 0);
+    explicit notification(worker     *parent = 0);
     ~notification();
 
     void doSetup(QThread &cThread);
@@ -52,9 +48,9 @@ public:
     void WriteToJson(QJsonObject json, QDateTime dt, int index);
     void sendMail(
             QString     username,
-//            QString     password,
-//            QString     server,
-//            int         port,
+            QString     password,
+            QString     server,
+            int         port,
             QString     recipient,
             QString     subject,
             QString     message,

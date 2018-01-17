@@ -29,12 +29,16 @@ QStringList config::read(QString obj)
                 foreach (const QJsonValue & v, array) {
                     result.append(QString::number(v.toObject().value("INTERVAL").toInt()));
                     result.append(QString::number(v.toObject().value("WEBSOCKET_PORT").toInt()));
+                    result.append(v.toObject().value("ROOT_TALISA_ASSETS").toString());
+                    result.append(v.toObject().value("ROOT_TALISA_API").toString());
                     result.append(QString::number(v.toObject().value("DEBUG_DATA").toBool()));
                     result.append(QString::number(v.toObject().value("DEBUG_DATABASE").toBool()));
                 }
             } else {
                 result.append(QString::number(value.toObject().value("INTERVAL").toInt()));
                 result.append(QString::number(value.toObject().value("WEBSOCKET_PORT").toInt()));
+                result.append(value.toObject().value("ROOT_TALISA_ASSETS").toString());
+                result.append(value.toObject().value("ROOT_TALISA_API").toString());
                 result.append(QString::number(value.toObject().value("DEBUG_DATA").toInt()));
                 result.append(QString::number(value.toObject().value("DEBUG_DATABASE").toInt()));
             }
@@ -79,7 +83,8 @@ void config::write(QJsonObject &json) const //Default
     configObject["WEBSOCKET_PORT"] = 2345;
     configObject["DEBUG_DATA"] = false;
     configObject["DEBUG_DATABASE"] = false;
-    configObject["ROOT_ASSETS"] = "/var/www/talisa/assets";
+    configObject["ROOT_TALISA_ASSETS"] = "/var/www/talisa/assets";
+    configObject["ROOT_TALISA_API"] = "http://localhost:1965/";
     configArray.append(configObject);
     json["CONFIG"] = configArray;
 
